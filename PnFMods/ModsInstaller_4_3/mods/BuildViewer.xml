@@ -1,0 +1,17 @@
+<code>
+	<target_File file="gui/battle_elements.xml">
+		<root_Node>
+			<find_Node tag="elementList">
+				<insert>
+					<element class="lesta.unbound2.UbElement" elementName="BuildViewer" name="unbound2BuildViewer" url="battle_stats.swf">
+						<properties hitTest="true"/>
+					</element>
+					<attrs>
+						<do_if_not_exist tag="element" type="name" name="unbound2BuildViewer"/>
+					</attrs>
+				</insert>
+			</find_Node>
+		</root_Node>
+	</target_File>
+	<check name="BuildViewer" version="1.0.0"/>
+</code>

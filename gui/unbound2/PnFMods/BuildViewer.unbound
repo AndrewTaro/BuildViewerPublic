@@ -1,0 +1,285 @@
+(def element BuildViewer () layout=true
+	(scope
+		#stage
+		(var stageComponent:gfx = "$datahub.getSingleComponent(CC.stage)")
+		(var stageWidth:number = "stageComponent.width" (event "stageComponent.evStageSizeChanged"))
+		(var stageHeight:number = "stageComponent.height" (event "stageComponent.evStageSizeChanged"))
+		#camera and data component
+		(var cameraEntity:gfx = "$datahub.getSingleEntity(CC.camera)")
+		(var dataComponent:gfx = "cameraEntity.data" (event "cameraEntity.evAdded") (event "cameraEntity.evRemoved"))
+		(var data:dict = "dataComponent ? dataComponent.data : {}" (event "dataComponent.evChanged"))
+		#userpref/show/hide
+		(event evVisibilityButtonClicked)
+		(var userPrefsComponent:gfx = "$datahub.getSingleComponent(CC.userPrefs)")
+		(var userPrefs:gfx = "userPrefsComponent.userPrefs" (event "userPrefsComponent.evUserPrefsChanged"))
+		(var userPrefsBool:dict = "userPrefs.elementsGroupExpand")
+		(var testvar:str = "userPrefsBool.showBuildViewer" watch=false)
+		(var viewersVisibility:bool = "testvar == false ? false : true" watch=false)
+		(bind viewersVisibility "!viewersVisibility" watch=false init=false (event "evVisibilityButtonClicked"))
+		(bindcall externalCall 'inputMapping.onAction' "['setUserPref', {'value': viewersVisibility, 'name': 'elementsGroupExpand', 'subName': 'showBuildViewer'}]" init=false watch=false (event "evVisibilityButtonClicked"))
+		(macro SIMPLE_MOUSE_OVER_DOWN_SELECTED_COLORTRANSFORM_SCOPE)
+		(var arrowDirection:str = "viewersVisibility ? 'left' : 'right'")
+		#drag/drop
+		(macro BUILDVIEWER_DRAGDROP_SCOPE _wndName = "'buildViewer'" _defaults = "{positionX: 290, positionY: (stageHeight - 400)}") # return dragPosX dragPosY
+	)
+
+	(hblock
+		(style
+			(position = "absolute")
+			(bind left "dragPosX" (bind trigger "dragPosX"))
+			(bind top "dragPosY" (bind trigger "dragPosY"))
+		)
+		#show/hide button
+		(block
+			(element DraggableElement _wndName='buildViewer' _defaults = "{positionX: 290, positionY: (stageHeight - 400)}")
+			(block
+				(dispatch evVisibilityButtonClicked on='click')
+				(macro SIMPLE_MOUSE_OVER_DOWN_SELECTED_COLORTRANSFORM "true")
+				(block
+					(style
+						(width = 20)
+						(height = 31)
+						(bind backgroundImage "'url:../service_kit/buttons/arrow_' + arrowDirection + '_down.png'")
+					)
+				)
+				(style
+					(align = "center|middle")
+					(marginRight = 5)
+					(marginLeft = 5)
+					(width = 20)
+					(height = 100)
+				)
+			)
+		)
+		#viewers
+		(block
+			(bind visible "viewersVisibility && data")
+
+			(mc contrast_panel
+				(class $FullsizeAbsolute)
+				(bind alpha "0.4")
+			)
+			(element NameViewer "data.vehicleId")
+			(element HorizontalDivider
+				(style
+					(paddingLeft = 10)
+					(paddingRight = 10)
+					(alpha = 2)
+				)
+			)
+			(element SkillViewer "data.skills")
+			(element HorizontalDivider
+				(style
+					(paddingLeft = 10)
+					(paddingRight = 10)
+					(alpha = 2)
+				)
+			)
+			(element ModernizationViewer "data.modernizations")
+		)
+	)
+)
+
+(def element NameViewer(vehicleId:number) layout=true
+	(scope
+		#player name
+		(var avatar:gfx = "$datahub.getPrimaryEntity(CC.vehicleInfo, vehicleId).avatar")
+		(var shipName:str = "avatar ? avatar.ship.ref.ship.nameUpper : ''")
+		(var avatarName:str = "avatar ? avatar.name : ''")
+	)
+	(hblock
+		(element NameItem "avatarName")
+		(element NameItem "shipName")
+	)
+	(style
+		(padding = [6, 6, 6, 6])
+	)
+)
+
+(def element NameItem(value:str) layout=true
+	(style
+		(margin = [6, 6, 15, 6])
+	)
+	(tf
+		(class $TextDefaultBold17NM)
+		(bind text "value")
+	)
+)
+
+(def element ModernizationViewer(modernizations:array) layout=true
+	(hblock
+		(controller $Repeat renderer='ModernizationItem' layout=true
+			(bind count "modernizations.length")
+			(args "modernizations[$index]")
+			#may have to convert index to str
+		)
+		(style
+			(padding = [6, 6, 6, 6])
+		)
+	)
+)
+
+(def element ModernizationItem(modernization:dict) layout=true
+	(scope
+		(var isInstalled:bool = "modernization ? true : false")
+		(var iconPath:str = "isInstalled ? modernization.iconPath : 'url:../service_kit/frames/64px_not_empty_field.png'")
+	)
+
+	(style
+		(width = 60px)
+		(height = 60px)
+		(margin = [2, 2, 2, 2])
+	)
+
+	(block
+		(block
+			#modernization icon
+			(style
+				(width = 60px)
+				(height = 60px)
+				(bind backgroundImage "iconPath")
+				(backgroundSize = "fill")
+			)
+		)
+	)
+)
+
+(def element SkillViewer(skills:array) layout = true
+	#crew skills
+	(block
+		(controller $Repeat renderer='SkillsRow' layout=true
+			(bind count "skills.length")
+			(args "skills[$index]")
+		)
+		(style
+			(padding = [6, 6, 6, 6])
+		)
+	)
+)
+
+(def element SkillsRow(crewSkillRow:array) layout=true
+	#skill row
+	(hblock
+		(controller $Repeat renderer='SkillItem' layout=true
+			(bind count "crewSkillRow.length")
+			(args "crewSkillRow[$index]")
+		)
+	)
+)
+
+(def element SkillItem(skill:dict) layout=true
+	(scope
+		(var isEpic:bool = "skill.isEpic")
+		(var isLearned:bool = "skill.isLearned")
+		(var iconPath:str = "skill.iconPath")
+		#(var transform:dict = "isLearned ? {} : {redMultiplier: 0, greenMultiplier: 0, blueMultiplier: 0, redOffset: 130, greenOffset: 130, blueOffset: 130}")
+		(var transform:dict = "isLearned ? {redOffset:0,greenOffset:-41,blueOffset:-153} : {redOffset: -100, greenOffset: -100, blueOffset: -100}")
+	)
+
+	(style
+		(width = 60px)
+		(height = 60px)
+		(margin = [2, 2, 2, 2])
+	)
+
+	(block
+		#skill icon
+		(block
+			(style
+				(bind backgroundImage "iconPath")
+			)
+			(bind colorTransform "transform")
+		)
+		#epic icon
+		(block
+			(style
+				(backgroundImage = "'url:../service_kit/item_types/icon_modernization_special.png'")
+			)
+			(bind visible "isEpic")
+		)
+	)
+)
+
+
+(def macro BUILDVIEWER_MOUSE_COMPONENT_SCOPE ()
+	(var mouse:gfx = "$datahub.getSingleComponent(CC.mouse)")
+	(var isMouseActive:bool = "mouse.active" (event "mouse.evActiveChanged"))
+	(var timerEntity:gfx = "$datahub.getSingleEntity(CC.timer)")
+	(var mouseX:number = "round(mouse.x)" (event "timerEntity.timer.evFrequent"))
+    (var mouseY:number = "round(mouse.y)" (event "timerEntity.timer.evFrequent"))
+)
+
+(def macro BUILDVIEWER_GET_UPREFS (isActive:expression=true)
+	(var _userPrefsMouse:gfx = "$datahub.getSingleComponent(CC.mouse)")
+	(var _userPrefsActive:bool = "_userPrefsMouse.active" (event "_userPrefsMouse.evActiveChanged"))
+	(var userPrefsEntity:gfx = "$datahub.getSingleEntity(CC.userPrefs)")
+	(var _uPrefs:gfx = "userPrefsEntity.userPrefs.userPrefs" (event "userPrefsEntity.userPrefs.evUserPrefsChanged"))
+	(var _uPrefsNum:bool = "_uPrefs.chatBoxWidth" watch=false)
+	(var uPrefsNum:dict = "_uPrefsNum ? _uPrefs.chatBoxWidth : {}" watch=false)
+	(bind uPrefsNum "_uPrefs.chatBoxWidth" watch=false init=false (bind enabled "_userPrefsActive && isActive") (bind trigger "_uPrefs.chatBoxWidth"))
+	(var _uPrefsBool:bool = "_uPrefs.elementsGroupExpand" watch=false)
+	(var uPrefsBool:dict = "_uPrefsBool ? _uPrefs.elementsGroupExpand : {}" watch=false)
+	(bind uPrefsBool "_uPrefs.elementsGroupExpand" watch=false init=false (bind enabled "_userPrefsActive && isActive") (bind trigger "_uPrefs.elementsGroupExpand"))
+)
+
+(def macro BUILDVIEWER_VAR_NUM (name:expression, key:expression, defaults:expression={})
+	(var name = "name" type=number value="toString(uPrefsNum[key + '_' + name]) != null ? round(uPrefsNum[key + '_' + name]) : defaults[name]")
+)
+
+(def macro BUILDVIEWER_DRAGDROP_SCOPE (_wndName:expression='', _defaults:expression={})
+	(event name = "'ev' + _wndName")
+
+	(var name = "'dragDropUserPrefsEntity'" type=gfx value="$datahub.getSingleEntity(CC.userPrefs)")
+	(var name = "'dragDropUserPrefsNum'" type=gfx value="dragDropUserPrefsEntity.userPrefs.userPrefs.chatBoxWidth")
+	(var name = "'dragPosX'" type=number value="toString(dragDropUserPrefsNum[_wndName + '_' + 'positionX']) != null ? round(dragDropUserPrefsNum[_wndName + '_' + 'positionX']) : _defaults['positionX']" watch=false)
+	(var name = "'dragPosY'" type=number value="toString(dragDropUserPrefsNum[_wndName + '_' + 'positionY']) != null ? round(dragDropUserPrefsNum[_wndName + '_' + 'positionY']) : _defaults['positionY']" watch=false)
+
+	(bind dragPosX "$event.x" init=false watch=false (event "$scope['ev' + _wndName]"))
+	(bind dragPosY "$event.y" init=false watch=false (event "$scope['ev' + _wndName]"))
+)
+
+(def element DraggableElement (_wndName:str, _defaults:dict) layout=true
+	(scope
+		(var evMouseDown:str = "'evMouseDown' + _wndName")
+		(var evMouseUp:str = "'evMouseUp' + _wndName")
+
+		(event name = "evMouseDown")
+		(event name = "evMouseUp")
+
+		(macro BUILDVIEWER_MOUSE_COMPONENT_SCOPE)
+
+		(var dragMouseDown:bool = "$event.isDown" init=false watch=false (event "$scope[evMouseDown]") (event "$scope[evMouseUp]"))
+		(bind dragMouseDown "false" (event "mouse.evActiveChanged"))
+
+		(macro STAGE_SIZE)
+
+		(macro BUILDVIEWER_GET_UPREFS)
+		(macro BUILDVIEWER_VAR_NUM name = "'positionX'" key = "_wndName" defaults = "_defaults")
+		(macro BUILDVIEWER_VAR_NUM name = "'positionY'" key = "_wndName" defaults = "_defaults")
+
+		(var diffPosX:number = "mouseX - positionX" init=false watch=false (event "$scope[evMouseDown]"))
+		(var diffPosY:number = "mouseY - positionY" init=false watch=false (event "$scope[evMouseDown]"))
+
+		(var curPosX:number = "mouseX - diffPosX")
+		(var curPosY:number = "mouseY - diffPosY")
+
+		(dispatch "'ev' + _wndName" args = "{x: curPosX > 0 ? curPosX : 0, y: curPosY > 0 ? curPosY : 0}" dir=1 (bind enabled "dragMouseDown && isMouseActive") (bind trigger "curPosX") (bind trigger "curPosY"))
+		(dispatch "'ev' + _wndName + 'IconVisibleChanged'" args = "{visible: dragMouseDown}" dir=1 (bind trigger "dragMouseDown"))
+	)
+
+	(class $FullsizeAbsolute)
+	(style (backgroundColor=0x01000000))
+	(mc contrast_panel
+		(class $FullsizeAbsolute)
+		(bind alpha "0.4")
+		(bind visible "isMouseActive")
+	)
+
+	(bindcall externalCall 'inputMapping.onAction' "['setUserPref', {'value': curPosX + 0.00001, 'name': 'chatBoxWidth', 'subName': _wndName + '_positionX'}]" init=false watch=false (bind trigger "dragMouseDown"))
+
+	(bindcall externalCall 'inputMapping.onAction' "['setUserPref', {'value': curPosY + 0.00001, 'name': 'chatBoxWidth', 'subName': _wndName + '_positionY'}]" init=false watch=false (bind trigger "dragMouseDown"))
+
+	(dispatch "evMouseDown" args="{isDown: true}" on='mouseDown')
+
+	(dispatch "evMouseUp" args="{isDown: false}" on='mouseUp')
+)

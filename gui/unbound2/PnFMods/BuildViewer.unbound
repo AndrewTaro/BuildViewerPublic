@@ -19,6 +19,12 @@
 		(bindcall externalCall 'inputMapping.onAction' "['setUserPref', {'value': viewersVisibility, 'name': 'elementsGroupExpand', 'subName': 'showBuildViewer'}]" init=false watch=false (event "evVisibilityButtonClicked"))
 		(macro SIMPLE_MOUSE_OVER_DOWN_SELECTED_COLORTRANSFORM_SCOPE)
 		(var arrowDirection:str = "viewersVisibility ? 'left' : 'right'")
+		#scale
+		(event evScaleSliderOpened)
+		(var scaleSliderVisibility:bool = "false" watch=false)
+		(bind scaleSliderVisibility "!scaleSliderVisibility" watch=false init=false (event "evScaleSliderOpened"))
+		(var scale:number = "userPrefs.chatBoxWidth.buildViewer_scale != null ? userPrefs.chatBoxWidth.buildViewer_scale / 100 : 1.0")
+		#
 		#drag/drop
 		(macro BUILDVIEWER_DRAGDROP_SCOPE _wndName = "'buildViewer'" _defaults = "{positionX: 290, positionY: (stageHeight - 400)}") # return dragPosX dragPosY
 	)
@@ -28,6 +34,8 @@
 			(position = "absolute")
 			(bind left "dragPosX" (bind trigger "dragPosX"))
 			(bind top "dragPosY" (bind trigger "dragPosY"))
+			(bind scaleX "scale")
+			(bind scaleY "scale")
 		)
 		#show/hide button
 		(block
@@ -279,6 +287,8 @@
 		(bind visible "isMouseActive")
 	)
 
+	(element BuildViewerOptionButton)
+
 	(bindcall externalCall 'inputMapping.onAction' "['setUserPref', {'value': curPosX + 0.00001, 'name': 'chatBoxWidth', 'subName': _wndName + '_positionX'}]" init=false watch=false (bind trigger "dragMouseDown"))
 
 	(bindcall externalCall 'inputMapping.onAction' "['setUserPref', {'value': curPosY + 0.00001, 'name': 'chatBoxWidth', 'subName': _wndName + '_positionY'}]" init=false watch=false (bind trigger "dragMouseDown"))
@@ -286,4 +296,65 @@
 	(dispatch "evMouseDown" args="{isDown: true}" on='mouseDown')
 
 	(dispatch "evMouseUp" args="{isDown: false}" on='mouseUp')
+)
+
+(def element BuildViewerSizeOption (_wndName:str='buildViewer', _enabled:bool=true) layout=true
+	(scope
+		(event evValueChanged) #slider event
+		(macro BUILDVIEWER_GET_UPREFS)
+		(macro BUILDVIEWER_VAR_NUM name = "'scale'" key = "_wndName" defaults = "{scale: 100}")
+	)
+
+	(bindcall externalCall 'inputMapping.onAction' "['setUserPref', {'value': $event.value + 0.00001, 'name': 'chatBoxWidth', 'subName': _wndName + '_scale'}]" init=false watch=false (event "evValueChanged"))
+
+	(block
+		(style
+			(width = "100%")
+			(align = "left")
+		)
+
+		(tf
+			(class $TextDefaultNM)
+			(bind alpha "_enabled ? TC : TEXT_PREVIEW_ALPHA")
+			(bind text "scale")
+		)
+		(element Slider
+				_value="scale"
+				_min="40"
+				_max="120"
+				_enabled="_enabled"
+		)
+	)
+)
+
+(def element BuildViewerOptionButton () layout=true
+	(scope
+		(event evHideInfotip)
+		(event evOnButtonClicked)
+
+		(var mouse:gfx = "$datahub.getSingleComponent(CC.mouse)")
+		(var isMouseActive:bool = "mouse.active" (event "mouse.evActiveChanged"))
+
+		(var infotipVisible:bool = false)
+	)
+	(dispatch evHideInfotip args="{}" (bind trigger "isMouseActive"))
+
+	(controller $Tooltip
+		(renderer='BuildViewerSizeOption')
+		(bindcall show animation={duration:0.1, easing:"Easing.cubic_in", from:{alpha:1}, to:{alpha:1}} (event "evOnButtonClicked"))
+		(bindcall hide animation={duration:0.1, easing:"Easing.cubic_out", from:{alpha:1}, to:{alpha:0}} on='evClickOutside' (event "evHideInfotip"))
+		(bind infotipVisible "true" init=false on='evShow')
+		(bind infotipVisible "false" init=false on='evHide')
+		(priority=1)
+		(macro MINIMAP_TOOLTIP_COMMON_PARAMS)
+	)
+
+	
+	(element ButtonSettingsSmall
+		(style
+			(position = "absolute") #(right = "-20px") (top = "-18px")
+			(left = "3px")
+			(top = "3px")
+		)
+	)
 )

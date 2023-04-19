@@ -202,11 +202,15 @@
 
 
 (def macro BUILDVIEWER_MOUSE_COMPONENT_SCOPE ()
+	(event evBuildViewerMouseOn)
 	(var mouse:gfx = "$datahub.getSingleComponent(CC.mouse)")
 	(var isMouseActive:bool = "mouse.active" (event "mouse.evActiveChanged"))
-	(var timerEntity:gfx = "$datahub.getSingleEntity(CC.timer)")
-	(var mouseX:number = "round(mouse.x)" (event "timerEntity.timer.evFrequent"))
-    (var mouseY:number = "round(mouse.y)" (event "timerEntity.timer.evFrequent"))
+	(dispatch evBuildViewerMouseOn args={} (event "evEnterFrame") (bind enabled "isMouseActive"))
+	#(var timerEntity:gfx = "$datahub.getSingleEntity(CC.timer)")
+	#(var mouseX:number = "round(mouse.x)" (event "timerEntity.timer.evFrequent"))
+    #(var mouseY:number = "round(mouse.y)" (event "timerEntity.timer.evFrequent"))
+	(var mouseX:number = "round(mouse.x)" (event "evBuildViewerMouseOn"))
+	(var mouseY:number = "round(mouse.y)" (event "evBuildViewerMouseOn"))
 )
 
 (def macro BUILDVIEWER_GET_UPREFS (isActive:expression=true)

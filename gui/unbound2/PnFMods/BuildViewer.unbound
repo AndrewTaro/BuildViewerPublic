@@ -276,7 +276,14 @@
 		(var curPosX:number = "mouseX - diffPosX")
 		(var curPosY:number = "mouseY - diffPosY")
 
-		(dispatch "'ev' + _wndName" args = "{x: curPosX > 0 ? curPosX : 0, y: curPosY > 0 ? curPosY : 0}" dir=1 (bind enabled "dragMouseDown && isMouseActive") (bind trigger "curPosX") (bind trigger "curPosY"))
+		(var stageX:number = "stageWidth  - 100")
+		(var stageY:number = "stageHeight - 100")
+
+		(var clampedCurPosX:number = "min(max(curPosX, 0), stageX)")
+		(var clampedCurPosY:number = "min(max(curPosY, 0), stageY)")
+
+		#(dispatch "'ev' + _wndName" args = "{x: curPosX > 0 ? curPosX : 0, y: curPosY > 0 ? curPosY : 0}" dir=1 (bind enabled "dragMouseDown && isMouseActive") (bind trigger "curPosX") (bind trigger "curPosY"))
+		(dispatch "'ev' + _wndName" args = "{x: clampedCurPosX, y: clampedCurPosY}" dir=1 (bind enabled "dragMouseDown && isMouseActive") (bind trigger "curPosX") (bind trigger "curPosY"))
 		(dispatch "'ev' + _wndName + 'IconVisibleChanged'" args = "{visible: dragMouseDown}" dir=1 (bind trigger "dragMouseDown"))
 	)
 

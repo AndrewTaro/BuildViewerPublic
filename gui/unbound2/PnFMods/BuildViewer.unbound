@@ -1,9 +1,20 @@
+(def constant BV_VISIBILITY_PREF_NAME 'buildViewer_showBuildViewer')
+(def constant BV_SCALE_PREF_NAME 'buildViewer_scale')
+(def constant BV_SCALE_PREF_DESC 'Viewer Scale')
+(def constant BV_SCALE_PREF {
+	MULTIPLIER: 5,
+	STEPS: 20
+})
+(def constant BV_ELEMENT_SIZE {
+	WIDTH: 20,
+	HEIGHT: 100
+})
+(def constant BV_ELEMENT_NAME 'buildViewer')
+
 (def element BuildViewer () layout=true
 	(scope
 		#stage
-		(var stageComponent:gfx = "$datahub.getSingleComponent(CC.stage)")
-		(var stageWidth:number = "stageComponent.width" (event "stageComponent.evStageSizeChanged"))
-		(var stageHeight:number = "stageComponent.height" (event "stageComponent.evStageSizeChanged"))
+		(macro STAGE_SIZE)
 		#camera and data component
 		(var cameraEntity:gfx = "$datahub.getSingleEntity(CC.camera)")
 		(var dataComponent:gfx = "cameraEntity.data" (event "cameraEntity.evAdded") (event "cameraEntity.evRemoved"))
@@ -13,39 +24,44 @@
 		(var userPrefsComponent:gfx = "$datahub.getSingleComponent(CC.userPrefs)")
 		(var userPrefs:gfx = "userPrefsComponent.userPrefs" (event "userPrefsComponent.evUserPrefsChanged"))
 		(var userPrefsBool:dict = "userPrefs.elementsGroupExpand")
-		(var testvar:str = "userPrefsBool.showBuildViewer" watch=false)
-		(var viewersVisibility:bool = "testvar == false ? false : true" watch=false)
-		(bind viewersVisibility "!viewersVisibility" watch=false init=false (event "evVisibilityButtonClicked"))
-		(bindcall externalCall 'inputMapping.onAction' "['setUserPref', {'value': viewersVisibility, 'name': 'elementsGroupExpand', 'subName': 'showBuildViewer'}]" init=false watch=false (event "evVisibilityButtonClicked"))
+		(var userPrefsNum:dict = "userPrefs.chatBoxWidth")
+		(var viewersVisibility:bool = "BV_VISIBILITY_PREF_NAME in userPrefsBool ? userPrefsBool[BV_VISIBILITY_PREF_NAME] : false" watch=false)
+		(bind viewersVisibility "$event.value" watch=false init=false (event "evVisibilityButtonClicked"))
+		(bindcall externalCall 'inputMapping.onAction' "['setUserPref', {'value': $event.value, 'name': 'elementsGroupExpand', 'subName': BV_VISIBILITY_PREF_NAME}]" init=false watch=false (event "evVisibilityButtonClicked"))
 		(macro SIMPLE_MOUSE_OVER_DOWN_SELECTED_COLORTRANSFORM_SCOPE)
 		(var arrowDirection:str = "viewersVisibility ? 'left' : 'right'")
 		#scale
-		(event evScaleSliderOpened)
-		(var scaleSliderVisibility:bool = "false" watch=false)
-		(bind scaleSliderVisibility "!scaleSliderVisibility" watch=false init=false (event "evScaleSliderOpened"))
-		(var scale:number = "userPrefs.chatBoxWidth.buildViewer_scale != null ? userPrefs.chatBoxWidth.buildViewer_scale / 100 : 1.0")
-		#
+		(var scalePref:number = "BV_SCALE_PREF_NAME in userPrefsNum ? round(userPrefsNum[BV_SCALE_PREF_NAME]) : 10.00")
+		(var scale:number = "((scalePref - BV_SCALE_PREF.STEPS/2) * BV_SCALE_PREF.MULTIPLIER) / 100 + 1.00")
 		#drag/drop
-		(macro BUILDVIEWER_DRAGDROP_SCOPE _wndName = "'buildViewer'" _defaults = "{positionX: 290, positionY: (stageHeight - 400)}") # return dragPosX dragPosY
+		(var defaultPos:dict = "{'positionX': 290, 'positionY': (stageHeight - 400)}")
+		(macro DRAGGABLE_GET_DROP_POSITION _wndName="BV_ELEMENT_NAME" _defaults="defaultPos")
 	)
 
+	(element BV_OptionButton
+		(style
+			(position = absolute)
+			(bind top "drogPosY - 27")
+			(bind left "drogPosX")
+		)
+	)
 	(hblock
 		(style
 			(position = "absolute")
-			(bind left "dragPosX" (bind trigger "dragPosX"))
-			(bind top "dragPosY" (bind trigger "dragPosY"))
+			(bind left "drogPosX")
+			(bind top "drogPosY")
 			(bind scaleX "scale")
 			(bind scaleY "scale")
 		)
 		#show/hide button
 		(block
-			(element DraggableElement _wndName='buildViewer' _defaults = "{positionX: 290, positionY: (stageHeight - 400)}")
+			(element ModDraggableElement _wndName="BV_ELEMENT_NAME" _defaults="defaultPos" _elmSize="{width: BV_ELEMENT_SIZE.WIDTH + 10, height: BV_ELEMENT_SIZE.HEIGHT}")
 			(block
-				(dispatch evVisibilityButtonClicked on='click')
+				(dispatch evVisibilityButtonClicked args="{value: !viewersVisibility}" on='click')
 				(macro SIMPLE_MOUSE_OVER_DOWN_SELECTED_COLORTRANSFORM "true")
 				(block
 					(style
-						(width = 20)
+						(width = "BV_ELEMENT_SIZE.WIDTH")
 						(height = 31)
 						(bind backgroundImage "'url:../service_kit/buttons/arrow_' + arrowDirection + '_down.png'")
 					)
@@ -54,59 +70,50 @@
 					(align = "center|middle")
 					(marginRight = 5)
 					(marginLeft = 5)
-					(width = 20)
-					(height = 100)
+					(width = "BV_ELEMENT_SIZE.WIDTH")
+					(height = "BV_ELEMENT_SIZE.HEIGHT")
 				)
 			)
 		)
 		#viewers
 		(block
+			(style
+				(width = "400")
+				(align = "center|middle")
+			)
 			(bind visible "viewersVisibility && data")
 
-			(mc contrast_panel
-				(class $FullsizeAbsolute)
-				(bind alpha "0.4")
-			)
-			(element NameViewer "data.vehicleId")
-			(element HorizontalDivider
-				(style
-					(paddingLeft = 10)
-					(paddingRight = 10)
-					(alpha = 2)
-				)
-			)
-			(element SkillViewer "data.skills")
-			(element HorizontalDivider
-				(style
-					(paddingLeft = 10)
-					(paddingRight = 10)
-					(alpha = 2)
-				)
-			)
-			(element ModernizationViewer "data.modernizations")
+			(macro BV_ContrastPanel)
+			(element BV_NameElement "data.vehicleId")
+			(macro BV_HorizontalDevider)
+			(element BV_SkillsElement "data.skills")
+			(macro BV_HorizontalDevider)
+			(element BV_ModernizationElement "data.modernizations")
 		)
 	)
 )
 
-(def element NameViewer(vehicleId:number) layout=true
+(def element BV_NameElement(vehicleId:number) layout=true
 	(scope
 		#player name
 		(var avatar:gfx = "$datahub.getPrimaryEntity(CC.vehicleInfo, vehicleId).avatar")
 		(var shipName:str = "avatar ? avatar.ship.ref.ship.nameUpper : ''")
+		(var shipType:str = "avatar ? avatar.ship.ref.ship.subtype : ''")
 		(var avatarName:str = "avatar ? avatar.name : ''")
 	)
 	(hblock
-		(element NameItem "avatarName")
-		(element NameItem "shipName")
+		(element BV_NameTextItem "avatarName")
+		(element ShipIcon "shipType")
+		(element BV_NameTextItem "shipName")
 	)
 	(style
-		(padding = [6, 6, 6, 6])
+		(padding = [6, 5, 6, 0])
 	)
 )
 
-(def element NameItem(value:str) layout=true
+(def element BV_NameTextItem(value:str) layout=true
 	(style
-		(margin = [6, 6, 15, 6])
+		(margin = [6, 6, 6, 6])
 	)
 	(tf
 		(class $TextDefaultBold17NM)
@@ -114,9 +121,9 @@
 	)
 )
 
-(def element ModernizationViewer(modernizations:array) layout=true
+(def element BV_ModernizationElement(modernizations:array) layout=true
 	(hblock
-		(controller $Repeat renderer='ModernizationItem' layout=true
+		(controller $Repeat renderer='BV_ModernizationIconItem' layout=true
 			(bind count "modernizations.length")
 			(args "modernizations[$index]")
 			#may have to convert index to str
@@ -127,7 +134,7 @@
 	)
 )
 
-(def element ModernizationItem(modernization:dict) layout=true
+(def element BV_ModernizationIconItem(modernization:dict) layout=true
 	(scope
 		(var isInstalled:bool = "modernization ? true : false")
 		(var iconPath:str = "isInstalled ? modernization.iconPath : 'url:../service_kit/frames/64px_not_empty_field.png'")
@@ -152,10 +159,10 @@
 	)
 )
 
-(def element SkillViewer(skills:array) layout = true
+(def element BV_SkillsElement(skills:array) layout = true
 	#crew skills
 	(block
-		(controller $Repeat renderer='SkillsRow' layout=true
+		(controller $Repeat renderer='BV_SkillsRowItem' layout=true
 			(bind count "skills.length")
 			(args "skills[$index]")
 		)
@@ -165,17 +172,17 @@
 	)
 )
 
-(def element SkillsRow(crewSkillRow:array) layout=true
+(def element BV_SkillsRowItem(crewSkillRow:array) layout=true
 	#skill row
 	(hblock
-		(controller $Repeat renderer='SkillItem' layout=true
+		(controller $Repeat renderer='BV_SkillIconItem' layout=true
 			(bind count "crewSkillRow.length")
 			(args "crewSkillRow[$index]")
 		)
 	)
 )
 
-(def element SkillItem(skill:dict) layout=true
+(def element BV_SkillIconItem(skill:dict) layout=true
 	(scope
 		(var isEpic:bool = "skill.isEpic")
 		(var isLearned:bool = "skill.isLearned")
@@ -208,134 +215,94 @@
 	)
 )
 
-
-(def macro BUILDVIEWER_MOUSE_COMPONENT_SCOPE ()
-	(event evBuildViewerMouseOn)
-	(var mouse:gfx = "$datahub.getSingleComponent(CC.mouse)")
-	(var stage:gfx = "$datahub.getSingleEntity(CC.stage).stage")
-	(var isMouseActive:bool = "mouse.active" (event "mouse.evActiveChanged"))
-	(dispatch evBuildViewerMouseOn args={} (event "evEnterFrame") (bind enabled "isMouseActive"))
-	#(var timerEntity:gfx = "$datahub.getSingleEntity(CC.timer)")
-	#(var mouseX:number = "round(mouse.x)" (event "timerEntity.timer.evFrequent"))
-    #(var mouseY:number = "round(mouse.y)" (event "timerEntity.timer.evFrequent"))
-	(var mouseX:number = "round(mouse.x / stage.scale)" (event "evBuildViewerMouseOn"))
-	(var mouseY:number = "round(mouse.y / stage.scale)" (event "evBuildViewerMouseOn"))
-)
-
-(def macro BUILDVIEWER_GET_UPREFS (isActive:expression=true)
-	(var _userPrefsMouse:gfx = "$datahub.getSingleComponent(CC.mouse)")
-	(var _userPrefsActive:bool = "_userPrefsMouse.active" (event "_userPrefsMouse.evActiveChanged"))
-	(var userPrefsEntity:gfx = "$datahub.getSingleEntity(CC.userPrefs)")
-	(var _uPrefs:gfx = "userPrefsEntity.userPrefs.userPrefs" (event "userPrefsEntity.userPrefs.evUserPrefsChanged"))
-	(var _uPrefsNum:bool = "_uPrefs.chatBoxWidth" watch=false)
-	(var uPrefsNum:dict = "_uPrefsNum ? _uPrefs.chatBoxWidth : {}" watch=false)
-	(bind uPrefsNum "_uPrefs.chatBoxWidth" watch=false init=false (bind enabled "_userPrefsActive && isActive") (bind trigger "_uPrefs.chatBoxWidth"))
-	(var _uPrefsBool:bool = "_uPrefs.elementsGroupExpand" watch=false)
-	(var uPrefsBool:dict = "_uPrefsBool ? _uPrefs.elementsGroupExpand : {}" watch=false)
-	(bind uPrefsBool "_uPrefs.elementsGroupExpand" watch=false init=false (bind enabled "_userPrefsActive && isActive") (bind trigger "_uPrefs.elementsGroupExpand"))
-)
-
-(def macro BUILDVIEWER_VAR_NUM (name:expression, key:expression, defaults:expression={})
-	(var name = "name" type=number value="toString(uPrefsNum[key + '_' + name]) != null ? round(uPrefsNum[key + '_' + name]) : defaults[name]")
-)
-
-(def macro BUILDVIEWER_DRAGDROP_SCOPE (_wndName:expression='', _defaults:expression={})
-	(event name = "'ev' + _wndName")
-
-	(var name = "'dragDropUserPrefsEntity'" type=gfx value="$datahub.getSingleEntity(CC.userPrefs)")
-	(var name = "'dragDropUserPrefsNum'" type=gfx value="dragDropUserPrefsEntity.userPrefs.userPrefs.chatBoxWidth")
-	(var name = "'dragPosX'" type=number value="toString(dragDropUserPrefsNum[_wndName + '_' + 'positionX']) != null ? round(dragDropUserPrefsNum[_wndName + '_' + 'positionX']) : _defaults['positionX']" watch=false)
-	(var name = "'dragPosY'" type=number value="toString(dragDropUserPrefsNum[_wndName + '_' + 'positionY']) != null ? round(dragDropUserPrefsNum[_wndName + '_' + 'positionY']) : _defaults['positionY']" watch=false)
-
-	(bind dragPosX "$event.x" init=false watch=false (event "$scope['ev' + _wndName]"))
-	(bind dragPosY "$event.y" init=false watch=false (event "$scope['ev' + _wndName]"))
-)
-
-(def element DraggableElement (_wndName:str, _defaults:dict) layout=true
-	(scope
-		(var evMouseDown:str = "'evMouseDown' + _wndName")
-		(var evMouseUp:str = "'evMouseUp' + _wndName")
-
-		(event name = "evMouseDown")
-		(event name = "evMouseUp")
-
-		(macro BUILDVIEWER_MOUSE_COMPONENT_SCOPE)
-
-		(var dragMouseDown:bool = "$event.isDown" init=false watch=false (event "$scope[evMouseDown]") (event "$scope[evMouseUp]"))
-		(bind dragMouseDown "false" (event "mouse.evActiveChanged"))
-
-		(macro STAGE_SIZE)
-
-		(macro BUILDVIEWER_GET_UPREFS)
-		(macro BUILDVIEWER_VAR_NUM name = "'positionX'" key = "_wndName" defaults = "_defaults")
-		(macro BUILDVIEWER_VAR_NUM name = "'positionY'" key = "_wndName" defaults = "_defaults")
-
-		(var diffPosX:number = "mouseX - positionX" init=false watch=false (event "$scope[evMouseDown]"))
-		(var diffPosY:number = "mouseY - positionY" init=false watch=false (event "$scope[evMouseDown]"))
-
-		(var curPosX:number = "mouseX - diffPosX")
-		(var curPosY:number = "mouseY - diffPosY")
-
-		(var stageX:number = "stageWidth  - 100")
-		(var stageY:number = "stageHeight - 100")
-
-		(var clampedCurPosX:number = "min(max(curPosX, 0), stageX)")
-		(var clampedCurPosY:number = "min(max(curPosY, 0), stageY)")
-
-		#(dispatch "'ev' + _wndName" args = "{x: curPosX > 0 ? curPosX : 0, y: curPosY > 0 ? curPosY : 0}" dir=1 (bind enabled "dragMouseDown && isMouseActive") (bind trigger "curPosX") (bind trigger "curPosY"))
-		(dispatch "'ev' + _wndName" args = "{x: clampedCurPosX, y: clampedCurPosY}" dir=1 (bind enabled "dragMouseDown && isMouseActive") (bind trigger "curPosX") (bind trigger "curPosY"))
-		(dispatch "'ev' + _wndName + 'IconVisibleChanged'" args = "{visible: dragMouseDown}" dir=1 (bind trigger "dragMouseDown"))
+(def macro BV_HorizontalDevider() layout=true
+	(element HorizontalDivider
+		(style
+			(paddingLeft = 10)
+			(paddingRight = 10)
+			(alpha = 2)
+		)
 	)
+)
 
-	(class $FullsizeAbsolute)
-	(style (backgroundColor=0x01000000))
+(def macro BV_ContrastPanel() layout=true
 	(mc contrast_panel
 		(class $FullsizeAbsolute)
-		(bind alpha "0.4")
-		(bind visible "isMouseActive")
+		(style
+			(alpha = "0.4")
+			(hitTest = false)
+		)
 	)
-
-	(element BuildViewerOptionButton)
-
-	(bindcall externalCall 'inputMapping.onAction' "['setUserPref', {'value': curPosX + 0.00001, 'name': 'chatBoxWidth', 'subName': _wndName + '_positionX'}]" init=false watch=false (bind trigger "dragMouseDown"))
-
-	(bindcall externalCall 'inputMapping.onAction' "['setUserPref', {'value': curPosY + 0.00001, 'name': 'chatBoxWidth', 'subName': _wndName + '_positionY'}]" init=false watch=false (bind trigger "dragMouseDown"))
-
-	(dispatch "evMouseDown" args="{isDown: true}" on='mouseDown')
-
-	(dispatch "evMouseUp" args="{isDown: false}" on='mouseUp')
 )
 
-(def element BuildViewerSizeOption (_wndName:str='buildViewer', _enabled:bool=true) layout=true
+(def element BV_SizeSliderItem () layout=true
 	(scope
-		(event evValueChanged) #slider event
-		(macro BUILDVIEWER_GET_UPREFS)
-		(macro BUILDVIEWER_VAR_NUM name = "'scale'" key = "_wndName" defaults = "{scale: 100}")
+		(event evSliderValueChanged) #slider event
+		(var userPrefsComponent:gfx = "$datahub.getSingleComponent(CC.userPrefs)")
+		(var userPrefsNum:dict = "userPrefsComponent.userPrefs.chatBoxWidth" (event "userPrefsComponent.evUserPrefsChanged"))
+		(var elementScale:number = "BV_SCALE_PREF_NAME in userPrefsNum ? round(userPrefsNum[BV_SCALE_PREF_NAME]) : 10.00")
+		(var displayedScale:number = "((elementScale - BV_SCALE_PREF.STEPS/2) * BV_SCALE_PREF.MULTIPLIER) + 100")
 	)
 
-	(bindcall externalCall 'inputMapping.onAction' "['setUserPref', {'value': $event.value + 0.00001, 'name': 'chatBoxWidth', 'subName': _wndName + '_scale'}]" init=false watch=false (event "evValueChanged"))
+	(bindcall externalCall 'inputMapping.onAction' "['setUserPref', {'value': $event.value + 0.00001, 'name': 'chatBoxWidth', 'subName': BV_SCALE_PREF_NAME}]" init=false watch=false (event "evSliderValueChanged"))
 
 	(block
 		(style
-			(width = "100%")
-			(align = "left")
+			(width = "200px")
+			(align = "center")
+		)
+
+		(mc contrast_panel
+			(class $FullsizeAbsolute)
+			(style
+				(alpha = "0.8")
+				(hitTest = false)
+			)
 		)
 
 		(tf
-			(class $TextDefaultNM)
-			(bind alpha "_enabled ? TC : TEXT_PREVIEW_ALPHA")
-			(bind text "scale")
+			(class $TextDefault)
+			(alpha = "TA")
+			(bind text "BV_SCALE_PREF_DESC")
+			(style
+				(width = 90%)
+				(marginTop = 5px)
+			)
 		)
-		(element Slider
-				_value="scale"
-				_min="40"
-				_max="120"
-				_enabled="_enabled"
+		(hblock
+			(style
+				(align = "center|middle")
+				(marginBottom = 5px)
+				(marginLeft = 8px)
+			)
+			(element DefaultSlider
+				_value = "elementScale"
+				_intervalsCount = "BV_SCALE_PREF.STEPS"
+				_unitsInStepInterval = "1"
+				_width = 140
+			)
+			(tf
+				(class $TextDefault)
+				(alpha = "TA")
+				(bind text "displayedScale")
+				(style
+					(marginLeft = 5px)
+					(width = 30px)
+				)
+			)
+			(tf
+				(class $TextDefault)
+				(alpha = "TC")
+				(text = "'%'")
+				(style
+					(marginLeft = -7px)
+				)
+			)
 		)
 	)
 )
 
-(def element BuildViewerOptionButton () layout=true
+(def element BV_OptionButton () layout=true
 	(scope
 		(event evHideInfotip)
 		(event evOnButtonClicked)
@@ -348,7 +315,7 @@
 	(dispatch evHideInfotip args="{}" (bind trigger "isMouseActive"))
 
 	(controller $Tooltip
-		(renderer='BuildViewerSizeOption')
+		(renderer='BV_SizeSliderItem')
 		(bindcall show animation={duration:0.1, easing:"Easing.cubic_in", from:{alpha:1}, to:{alpha:1}} (event "evOnButtonClicked"))
 		(bindcall hide animation={duration:0.1, easing:"Easing.cubic_out", from:{alpha:1}, to:{alpha:0}} on='evClickOutside' (event "evHideInfotip"))
 		(bind infotipVisible "true" init=false on='evShow')
@@ -356,12 +323,12 @@
 		(priority=1)
 		(macro MINIMAP_TOOLTIP_COMMON_PARAMS)
 	)
-
 	
 	(element ButtonSettingsSmall
+		(bind visible "isMouseActive")
 		(style
-			(position = "absolute") #(right = "-20px") (top = "-18px")
-			(left = "3px")
+			(position = "absolute")
+			(left = "4px")
 			(top = "3px")
 		)
 	)

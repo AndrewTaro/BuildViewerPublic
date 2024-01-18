@@ -40,7 +40,7 @@
 
 	(element BV_OptionButton
 		(style
-			(position = absolute)
+			(position = "absolute")
 			(bind top "drogPosY - 27")
 			(bind left "drogPosX")
 		)

@@ -41,15 +41,15 @@
 	(element BV_OptionButton
 		(style
 			(position = "absolute")
-			(bind top "drogPosY - 27")
-			(bind left "drogPosX")
+			(bind top "dragPosY - 27")
+			(bind left "dragPosX")
 		)
 	)
 	(hblock
 		(style
 			(position = "absolute")
-			(bind left "drogPosX")
-			(bind top "drogPosY")
+			(bind left "dragPosX")
+			(bind top "dragPosY")
 			(bind scaleX "scale")
 			(bind scaleY "scale")
 		)

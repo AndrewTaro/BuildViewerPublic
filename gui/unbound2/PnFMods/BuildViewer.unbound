@@ -18,7 +18,11 @@
 		#camera and data component
 		(var cameraEntity:gfx = "$datahub.getSingleEntity(CC.camera)")
 		(var dataComponent:gfx = "cameraEntity.data" (event "cameraEntity.evAdded") (event "cameraEntity.evRemoved"))
-		(var data:dict = "dataComponent ? dataComponent.data : {}" (event "dataComponent.evChanged"))
+		(var data:dict = "dataComponent ? dataComponent.data : null" (event "dataComponent.evChanged"))
+		(var vehicleId:number = "data ? data.vehicleId : -1")
+		(var skills:array = "data ? data.skills : null")
+		(var modernizations:array = "data ? data.modernizations : null")
+
 		#userpref/show/hide
 		(event evVisibilityButtonClicked)
 		(var userPrefsComponent:gfx = "$datahub.getSingleComponent(CC.userPrefs)")
@@ -84,11 +88,11 @@
 			(bind visible "viewersVisibility && data")
 
 			(macro BV_ContrastPanel)
-			(element BV_NameElement "data.vehicleId")
+			(element BV_NameElement "vehicleId")
 			(macro BV_HorizontalDevider)
-			(element BV_SkillsElement "data.skills")
+			(element BV_SkillsElement "skills")
 			(macro BV_HorizontalDevider)
-			(element BV_ModernizationElement "data.modernizations")
+			(element BV_ModernizationElement "modernizations")
 		)
 	)
 )
@@ -96,10 +100,11 @@
 (def element BV_NameElement(vehicleId:number) layout=true
 	(scope
 		#player name
-		(var avatar:gfx = "$datahub.getPrimaryEntity(CC.vehicleInfo, vehicleId).avatar")
-		(var shipName:str = "avatar ? avatar.ship.ref.ship.nameUpper : ''")
-		(var shipType:str = "avatar ? avatar.ship.ref.ship.subtype : ''")
-		(var avatarName:str = "avatar ? avatar.name : ''")
+		(var avatarEntity:gfx = "$datahub.getPrimaryEntity(CC.vehicleInfo, vehicleId)")
+		(var avatarComponent:gfx = "avatarEntity ? avatarEntity.avatar : null")
+		(var shipName:str = "avatarComponent ? avatarComponent.ship.ref.ship.nameUpper : ''")
+		(var shipType:str = "avatarComponent ? avatarComponent.ship.ref.ship.subtype : ''")
+		(var avatarName:str = "avatarComponent ? avatarComponent.name : ''")
 	)
 	(hblock
 		(element BV_NameTextItem "avatarName")

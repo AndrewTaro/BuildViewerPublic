@@ -10,18 +10,21 @@
 	HEIGHT: 100
 })
 (def constant BV_ELEMENT_NAME 'buildViewer')
+(def constant BV_COMPONENT_KEY 'modBuildViewer')
 
 (def element BuildViewer () layout=true
 	(scope
 		#stage
 		(macro STAGE_SIZE)
 		#camera and data component
-		(var cameraEntity:gfx = "$datahub.getSingleEntity(CC.camera)")
-		(var dataComponent:gfx = "cameraEntity.data" (event "cameraEntity.evAdded") (event "cameraEntity.evRemoved"))
-		(var data:dict = "dataComponent ? dataComponent.data : null" (event "dataComponent.evChanged"))
-		(var vehicleId:number = "data ? data.vehicleId : -1")
-		(var skills:array = "data ? data.skills : null")
-		(var modernizations:array = "data ? data.modernizations : null")
+		(var entityWatcher:gfx = "$datahub.getPrimWatcher(CC.mods_DataComponent, BV_COMPONENT_KEY)")
+		(var buldViewerEntity:gfx = "entityWatcher.entity" (event "entityWatcher.event"))
+		(var dataComponent:gfx = "buldViewerEntity ? buldViewerEntity.mods_DataComponent : null" (event "buldViewerEntity.evAdded"))
+		(var data:dict = "dataComponent ? dataComponent.data : {}" (event "dataComponent.evDataChanged"))
+		(var vehicleId:number = "'vehicleId' in data ? data.vehicleId : -1")
+		(var skills:array = "'skills' in data ? data.skills : []")
+		(var modernizations:array = "'modernizations' in data ? data.modernizations : []")
+		(var signals:array = "'signals' in data ? data.signals : []")
 
 		#userpref/show/hide
 		(event evVisibilityButtonClicked)
@@ -92,7 +95,9 @@
 			(macro BV_HorizontalDevider)
 			(element BV_SkillsElement "skills")
 			(macro BV_HorizontalDevider)
-			(element BV_ModernizationElement "modernizations")
+			(element BV_ModernizationsElement "modernizations")
+			(macro BV_HorizontalDevider)
+			(element BV_SignalsElement "signals")
 		)
 	)
 )
@@ -126,7 +131,7 @@
 	)
 )
 
-(def element BV_ModernizationElement(modernizations:array) layout=true
+(def element BV_ModernizationsElement(modernizations:array) layout=true
 	(hblock
 		(controller $Repeat renderer='BV_ModernizationIconItem' layout=true
 			(bind count "modernizations.length")
@@ -217,6 +222,45 @@
 			)
 			(bind visible "isEpic")
 		)
+	)
+)
+
+(def element BV_SignalsElement(signals:array)
+	(hblock
+		(controller $Repeat renderer='BV_SignalIconItem'
+			(bind count "signals.length")
+			(args "signals[$index]")
+		)
+		(style
+			(padding = [6, 6, 6, 6])
+		)
+	)
+)
+
+(def element BV_SignalIconItem(signal:dict)
+	(scope
+		(var isInstalled:bool = "signal ? true : false")
+		(var iconPath:str = "isInstalled ? signal.iconPath : 'url:../service_kit/frames/64px_not_empty_field.png'")
+		(var signalId:number = "isInstalled ? signal.id : 0")
+	)
+
+	(style
+		(width = 45px)
+		(height = 45px)
+		(margin = [1, 1, 1, 1])
+		(bind backgroundImage "iconPath")
+		(backgroundSize = "fill")
+	)
+
+	(controller $Tooltip
+		(renderer = 'SignalTooltip')
+		(args
+			_signalId = "signalId"
+			_amount = "0"
+			_noMouseInstructions = "true"
+			_isReward = "true"
+		)
+		(macro DEFAULT_TOOLTIP_BEHAVIOUR "0")
 	)
 )
 

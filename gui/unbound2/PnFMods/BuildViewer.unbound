@@ -10,29 +10,42 @@
 
 (def constant BV_PREFS {
 	DISABLE_DRAGDROP			: {KEY: 'buildViewerDisableDragDrop', 			DEFAULT: false},# Disable Drag-Drop (Lock Position)
+	DISABLE_ALLY_BUILDS			: {KEY: 'buildViewerDisableAllyBuilds', 		DEFAULT: false},# Disable ally's builds
 	SCALE						: {KEY: 'buildViewerScale', 					DEFAULT: 1.0,	MODIFIER: 0.1,	OFFSET: 0.5},	# Size Scale
 	BACKGROUND_ALPHA			: {KEY: 'buildViewerBackgroundOpacity', 		DEFAULT: 0.4,	MODIFIER: 0.1,	OFFSET: 0},		# Background Alpha
 })
 
 (def element BuildViewer () layout=true
 	(scope
-		#stage
+		# Stage
 		(macro STAGE_SIZE)
-		#camera and data component
-		(var entityWatcher:gfx = "$datahub.getPrimWatcher(CC.mods_DataComponent, BV_COMPONENT_KEY)")
-		(var buldViewerEntity:gfx = "entityWatcher.entity" (event "entityWatcher.event"))
-		(var dataComponent:gfx = "buldViewerEntity ? buldViewerEntity.mods_DataComponent : null" (event "buldViewerEntity.evAdded"))
-		(var data:dict = "dataComponent ? dataComponent.data : {}" (event "dataComponent.evDataChanged"))
-		(var vehicleId:number = "'vehicleId' in data ? data.vehicleId : -1")
-		(var skills:array = "'skills' in data ? data.skills : []")
-		(var modernizations:array = "'modernizations' in data ? data.modernizations : []")
-		(var signals:array = "'signals' in data ? data.signals : []")
 
 		# Userpref
 		(var userPrefsComponent:gfx = "$datahub.getSingleComponent(CC.userPrefs)")
 		(var userPrefs:gfx = "userPrefsComponent.userPrefs" (event "userPrefsComponent.evUserPrefsChanged"))
 		(var userPrefsBool:gfx = "userPrefs.elementsGroupExpand")
 		(var userPrefsNum:gfx = "userPrefs.chatBoxWidth")
+
+		# Builds Entity
+		(var entityWatcher:gfx = "$datahub.getPrimWatcher(CC.mods_DataComponent, BV_COMPONENT_KEY)")
+		(var buldViewerEntity:gfx = "entityWatcher.entity" (event "entityWatcher.event"))
+		(var dataComponent:gfx = "buldViewerEntity ? buldViewerEntity.mods_DataComponent : null" (event "buldViewerEntity.evAdded"))
+		(var data:dict = "dataComponent ? dataComponent.data : {}" (event "dataComponent.evDataChanged"))
+
+		# Hide Ally Builds?
+		(macro BV_GET_PREF_BOOL		_varName="'isOwnBuildOnlyPref'"	_pref="BV_PREFS.DISABLE_ALLY_BUILDS")
+		(macro IS_SPECTATOR_MODE)
+		(var isOwnBuildOnly:bool = "!isSpectatorTrainingMode && isOwnBuildOnlyPref")
+		(var playerEntity:gfx = "$datahub.getSingleEntity(CC.playerAvatar)")
+		(var ownBuild:dict = "{}" watch=false)
+		(bind ownBuild "data" watch=false (bind enabled "'vehicleId' in data && playerEntity && (data.vehicleId == playerEntity.vehicle.id)") (bind trigger "data"))
+
+		(var buildData:dict = "isOwnBuildOnly ? ownBuild : data")
+
+		(var vehicleId:number = "'vehicleId' in buildData ? buildData.vehicleId : -1")
+		(var skills:array = "'skills' in buildData ? buildData.skills : []")
+		(var modernizations:array = "'modernizations' in buildData ? buildData.modernizations : []")
+		(var signals:array = "'signals' in buildData ? buildData.signals : []")
 
 		# Show/Hide Button
 		(event evVisibilityButtonClicked)

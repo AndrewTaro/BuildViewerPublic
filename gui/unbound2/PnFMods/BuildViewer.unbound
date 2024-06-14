@@ -1,16 +1,18 @@
 (def constant BV_VISIBILITY_PREF_NAME 'buildViewer_showBuildViewer')
-(def constant BV_SCALE_PREF_NAME 'buildViewer_scale')
-(def constant BV_SCALE_PREF_DESC 'Viewer Scale')
-(def constant BV_SCALE_PREF {
-	MULTIPLIER: 5,
-	STEPS: 20
-})
+(def constant TT_BUILDVIEWER_INSTALLED "true")
+
 (def constant BV_ELEMENT_SIZE {
 	WIDTH: 20,
 	HEIGHT: 100
 })
 (def constant BV_ELEMENT_NAME 'buildViewer')
 (def constant BV_COMPONENT_KEY 'modBuildViewer')
+
+(def constant BV_PREFS {
+	DISABLE_DRAGDROP			: {KEY: 'buildViewerDisableDragDrop', 			DEFAULT: false},# Disable Drag-Drop (Lock Position)
+	SCALE						: {KEY: 'buildViewerScale', 					DEFAULT: 1.0,	MODIFIER: 0.1,	OFFSET: 0.5},	# Size Scale
+	BACKGROUND_ALPHA			: {KEY: 'buildViewerBackgroundOpacity', 		DEFAULT: 0.4,	MODIFIER: 0.1,	OFFSET: 0},		# Background Alpha
+})
 
 (def element BuildViewer () layout=true
 	(scope
@@ -26,28 +28,32 @@
 		(var modernizations:array = "'modernizations' in data ? data.modernizations : []")
 		(var signals:array = "'signals' in data ? data.signals : []")
 
-		#userpref/show/hide
-		(event evVisibilityButtonClicked)
+		# Userpref
 		(var userPrefsComponent:gfx = "$datahub.getSingleComponent(CC.userPrefs)")
 		(var userPrefs:gfx = "userPrefsComponent.userPrefs" (event "userPrefsComponent.evUserPrefsChanged"))
-		(var userPrefsBool:dict = "userPrefs.elementsGroupExpand")
-		(var userPrefsNum:dict = "userPrefs.chatBoxWidth")
-		(var viewersVisibility:bool = "BV_VISIBILITY_PREF_NAME in userPrefsBool ? userPrefsBool[BV_VISIBILITY_PREF_NAME] : false" watch=false)
+		(var userPrefsBool:gfx = "userPrefs.elementsGroupExpand")
+		(var userPrefsNum:gfx = "userPrefs.chatBoxWidth")
+
+		# Show/Hide Button
+		(event evVisibilityButtonClicked)
+		(var viewersVisibility:bool = "isBool(userPrefsBool[BV_VISIBILITY_PREF_NAME]) ? userPrefsBool[BV_VISIBILITY_PREF_NAME] : false" watch=false)
 		(bind viewersVisibility "$event.value" watch=false init=false (event "evVisibilityButtonClicked"))
 		(bindcall externalCall 'inputMapping.onAction' "['setUserPref', {'value': $event.value, 'name': 'elementsGroupExpand', 'subName': BV_VISIBILITY_PREF_NAME}]" init=false watch=false (event "evVisibilityButtonClicked"))
 		(macro SIMPLE_MOUSE_OVER_DOWN_SELECTED_COLORTRANSFORM_SCOPE)
 		(var arrowDirection:str = "viewersVisibility ? 'left' : 'right'")
-		#scale
-		(var scalePref:number = "BV_SCALE_PREF_NAME in userPrefsNum ? round(userPrefsNum[BV_SCALE_PREF_NAME]) : 10.00")
-		(var scale:number = "((scalePref - BV_SCALE_PREF.STEPS/2) * BV_SCALE_PREF.MULTIPLIER) / 100 + 1.00")
-		#drag/drop
+
+		# Numbers
+		(macro BV_GET_PREF_NUMBER	_varName="'scale'" 				_pref="BV_PREFS.SCALE")
+		(macro BV_GET_PREF_NUMBER	_varName="'backgroundAlpha'"	_pref="BV_PREFS.BACKGROUND_ALPHA")
+
+		# Drag/Drop
+		(macro BV_GET_PREF_BOOL		_varName="'isPositionLocked'"	_pref="BV_PREFS.DISABLE_DRAGDROP")
 		(var defaultPos:dict = "{'positionX': 290, 'positionY': (stageHeight - 400)}")
 		(macro DRAGGABLE_GET_DROP_POSITION _wndName="BV_ELEMENT_NAME" _defaults="defaultPos")
 	)
 
-	(element BV_OptionButton
+	(element TT_ConfigButtonElement _modIndex="10"
 		(style
-			(position = "absolute")
 			(bind top "dragPosY - 27")
 			(bind left "dragPosX")
 		)
@@ -60,9 +66,17 @@
 			(bind scaleX "scale")
 			(bind scaleY "scale")
 		)
-		#show/hide button
+		# Show/Hide Button
 		(block
-			(element ModDraggableElement _wndName="BV_ELEMENT_NAME" _defaults="defaultPos" _elmSize="{width: BV_ELEMENT_SIZE.WIDTH + 10, height: BV_ELEMENT_SIZE.HEIGHT}")
+			(controller $Instance renderer='ModDraggableElement'
+				(bind enabled "!isPositionLocked")
+				(args
+					_wndName="BV_ELEMENT_NAME"
+					_defaults="defaultPos"
+					_elmSize="{width: BV_ELEMENT_SIZE.WIDTH + 10, height: BV_ELEMENT_SIZE.HEIGHT}"
+				)
+			)
+
 			(block
 				(dispatch evVisibilityButtonClicked args="{value: !viewersVisibility}" on='click')
 				(macro SIMPLE_MOUSE_OVER_DOWN_SELECTED_COLORTRANSFORM "true")
@@ -82,7 +96,7 @@
 				)
 			)
 		)
-		#viewers
+		# Viewer
 		(block
 			(style
 				(width = "400")
@@ -90,7 +104,7 @@
 			)
 			(bind visible "viewersVisibility && data")
 
-			(macro BV_ContrastPanel)
+			(macro BV_ContrastPanel _alpha="backgroundAlpha")
 			(element BV_NameElement "vehicleId")
 			(macro BV_HorizontalDevider)
 			(element BV_SkillsElement "skills")
@@ -274,111 +288,25 @@
 	)
 )
 
-(def macro BV_ContrastPanel() layout=true
+(def macro BV_ContrastPanel(_alpha:expression) layout=true
 	(mc contrast_panel
 		(class $FullsizeAbsolute)
 		(style
-			(alpha = "0.4")
+			(bind alpha "_alpha")
 			(hitTest = false)
 		)
 	)
 )
 
-(def element BV_SizeSliderItem () layout=true
-	(scope
-		(event evSliderValueChanged) #slider event
-		(var userPrefsComponent:gfx = "$datahub.getSingleComponent(CC.userPrefs)")
-		(var userPrefsNum:dict = "userPrefsComponent.userPrefs.chatBoxWidth" (event "userPrefsComponent.evUserPrefsChanged"))
-		(var elementScale:number = "BV_SCALE_PREF_NAME in userPrefsNum ? round(userPrefsNum[BV_SCALE_PREF_NAME]) : 10.00")
-		(var displayedScale:number = "((elementScale - BV_SCALE_PREF.STEPS/2) * BV_SCALE_PREF.MULTIPLIER) + 100")
-	)
-
-	(bindcall externalCall 'inputMapping.onAction' "['setUserPref', {'value': $event.value + 0.00001, 'name': 'chatBoxWidth', 'subName': BV_SCALE_PREF_NAME}]" init=false watch=false (event "evSliderValueChanged"))
-
-	(block
-		(style
-			(width = "200px")
-			(align = "center")
-		)
-
-		(mc contrast_panel
-			(class $FullsizeAbsolute)
-			(style
-				(alpha = "0.8")
-				(hitTest = false)
-			)
-		)
-
-		(tf
-			(class $TextDefault)
-			(alpha = "TA")
-			(bind text "BV_SCALE_PREF_DESC")
-			(style
-				(width = 90%)
-				(marginTop = 5px)
-			)
-		)
-		(hblock
-			(style
-				(align = "center|middle")
-				(marginBottom = 5px)
-				(marginLeft = 8px)
-			)
-			(element DefaultSlider
-				_value = "elementScale"
-				_intervalsCount = "BV_SCALE_PREF.STEPS"
-				_unitsInStepInterval = "1"
-				_width = 140
-			)
-			(tf
-				(class $TextDefault)
-				(alpha = "TA")
-				(bind text "displayedScale")
-				(style
-					(marginLeft = 5px)
-					(width = 30px)
-				)
-			)
-			(tf
-				(class $TextDefault)
-				(alpha = "TC")
-				(text = "'%'")
-				(style
-					(marginLeft = -7px)
-				)
-			)
-		)
-	)
+(def macro BV_GET_USERPREF()
+	(var userPrefsComponent:gfx = "$datahub.getSingleComponent(CC.userPrefs)")
+	(var userPrefsNum:gfx = "userPrefsComponent.userPrefs.chatBoxWidth" watch=false (event "userPrefsComponent.evUserPrefsChanged"))
 )
 
-(def element BV_OptionButton () layout=true
-	(scope
-		(event evHideInfotip)
-		(event evOnButtonClicked)
+(def macro BV_GET_PREF_NUMBER (_varName:expression, _pref:expression)
+	(var name="_varName" type=number value="userPrefsNum && isNumber(userPrefsNum[_pref.KEY]) ? _pref.OFFSET + (round(userPrefsNum[_pref.KEY]) * _pref.MODIFIER) : _pref.DEFAULT")
+)
 
-		(var mouse:gfx = "$datahub.getSingleComponent(CC.mouse)")
-		(var isMouseActive:bool = "mouse.active" (event "mouse.evActiveChanged"))
-
-		(var infotipVisible:bool = false)
-	)
-	(dispatch evHideInfotip args="{}" (bind trigger "isMouseActive"))
-
-	(controller $Tooltip
-		(renderer='BV_SizeSliderItem')
-		(bindcall show animation={duration:0.1, easing:"Easing.cubic_in", from:{alpha:1}, to:{alpha:1}} (event "evOnButtonClicked"))
-		(bindcall hide animation={duration:0.1, easing:"Easing.cubic_out", from:{alpha:1}, to:{alpha:0}} on='evClickOutside' (event "evHideInfotip"))
-		(bind infotipVisible "true" init=false on='evShow')
-		(bind infotipVisible "false" init=false on='evHide')
-		(priority=1)
-		(macro MINIMAP_TOOLTIP_COMMON_PARAMS)
-	)
-	
-	(element ButtonSettingsSmall
-		(bind visible "isMouseActive")
-		(style
-			(position = "absolute")
-			(left = "4px")
-			(top = "3px")
-		)
-	)
+(def macro BV_GET_PREF_BOOL (_varName:expression, _pref:expression)
+	(var name="_varName" type=bool value="userPrefsNum && isNumber(userPrefsNum[_pref.KEY]) ? round(userPrefsNum[_pref.KEY]) : _pref.DEFAULT")
 )

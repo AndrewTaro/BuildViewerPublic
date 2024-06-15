@@ -12,6 +12,7 @@ The mod element can be drag&dropped. You can also click on the arrow to hide/sho
 # Requirements
 You must install the following for this mod to work:
 - [DraggableUnbound2](../../../DraggableUnbound2)
+- [TTaro Mod Config](../../../TTaroModConfig)
 
 # Install
 1. Download a zip.

@@ -6,7 +6,8 @@
 	HEIGHT: 100
 })
 (def constant BV_ELEMENT_NAME 'buildViewer')
-(def constant BV_COMPONENT_KEY 'modBuildViewer')
+(def constant BV_COMPONENT_KEY_BUILDS 'modBuildViewerBuilds')
+(def constant BV_COMPONENT_KEY_TARGET 'modBuildViewerTarget')
 
 (def constant BV_PREFS {
 	DISABLE_DRAGDROP			: {KEY: 'buildViewerDisableDragDrop', 			DEFAULT: false},# Disable Drag-Drop (Lock Position)
@@ -27,20 +28,27 @@
 		(var userPrefsNum:gfx = "userPrefs.chatBoxWidth")
 
 		# Builds Entity
-		(var entityWatcher:gfx = "$datahub.getPrimWatcher(CC.mods_DataComponent, BV_COMPONENT_KEY)")
-		(var buldViewerEntity:gfx = "entityWatcher.entity" (event "entityWatcher.event"))
-		(var dataComponent:gfx = "buldViewerEntity ? buldViewerEntity.mods_DataComponent : null" (event "buldViewerEntity.evAdded"))
-		(var data:dict = "dataComponent ? dataComponent.data : {}" (event "dataComponent.evDataChanged"))
+		(var buildsEntityWatcher:gfx = "$datahub.getPrimWatcher(CC.mods_DataComponent, BV_COMPONENT_KEY_BUILDS)")
+		(var buildsEntity:gfx = "buildsEntityWatcher.entity" (event "buildsEntityWatcher.event"))
+		(var buildsDataComponent:gfx = "buildsEntity ? buildsEntity.mods_DataComponent : null" (event "buildsEntity.evAdded"))
+		(var buildsData:dict = "buildsDataComponent ? buildsDataComponent.data : {}" (event "buildsDataComponent.evDataChanged"))
+
+		# Target Entity
+		(var targetEntityWatcher:gfx = "$datahub.getPrimWatcher(CC.mods_DataComponent, BV_COMPONENT_KEY_TARGET)")
+		(var targetEntity:gfx = "targetEntityWatcher.entity" (event "targetEntityWatcher.event"))
+		(var targetDataComponent:gfx = "targetEntity ? targetEntity.mods_DataComponent : null" (event "targetEntity.evAdded"))
+		(var targetData:dict = "targetDataComponent ? targetDataComponent.data : {}" (event "targetDataComponent.evDataChanged"))
+		(var targetVehicleId:str = "'vehicleId' in targetData ? toString(targetData.vehicleId) : ''")
 
 		# Hide Ally Builds?
 		(macro BV_GET_PREF_BOOL		_varName="'isOwnBuildOnlyPref'"	_pref="BV_PREFS.DISABLE_ALLY_BUILDS")
 		(macro IS_SPECTATOR_MODE)
 		(var isOwnBuildOnly:bool = "!isSpectatorTrainingMode && isOwnBuildOnlyPref")
 		(var playerEntity:gfx = "$datahub.getSingleEntity(CC.playerAvatar)")
-		(var ownBuild:dict = "{}" watch=false)
-		(bind ownBuild "data" watch=false (bind enabled "'vehicleId' in data && playerEntity && (data.vehicleId == playerEntity.vehicle.id)") (bind trigger "data"))
+		(var ownVehicleId:str = "playerEntity ? toString(playerEntity.vehicle.id) : ''")
+		(var targetId:str = "isOwnBuildOnly ? ownVehicleId : targetVehicleId")
 
-		(var buildData:dict = "isOwnBuildOnly ? ownBuild : data")
+		(var buildData:dict = "targetId in buildsData ? buildsData[targetId] : {}")
 
 		(var vehicleId:number = "'vehicleId' in buildData ? buildData.vehicleId : -1")
 		(var skills:array = "'skills' in buildData ? buildData.skills : []")
@@ -65,7 +73,7 @@
 		(macro DRAGGABLE_GET_DROP_POSITION _wndName="BV_ELEMENT_NAME" _defaults="defaultPos")
 	)
 
-	(element TT_ConfigButtonElement _modIndex="10"
+	(element TT_ConfigButtonElement _modIndex="10" _tooltipAlign="outerTop|outerLeft"
 		(style
 			(bind top "dragPosY - 27")
 			(bind left "dragPosX")
@@ -115,7 +123,7 @@
 				(width = "400")
 				(align = "center|middle")
 			)
-			(bind visible "viewersVisibility && data")
+			(bind visible "viewersVisibility && targetId")
 
 			(macro BV_ContrastPanel _alpha="backgroundAlpha")
 			(element BV_NameElement "vehicleId")
